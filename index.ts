@@ -54,6 +54,7 @@ type State = {
     enemies: Enemy[];
     bullets: Bullet[];
     events: Events;
+    shootCooldown: number;
 };
 
 
@@ -91,14 +92,23 @@ function renderEnemy(enemy: Enemy) {
 }
 
 function renderBullet(bullet: Bullet) {
-    drawRectangle(bullet.rect, ENEMY_COLOR);
+    drawRectangle(bullet.rect, BULLET_COLOR);
+}
+
+function renderBullets(bullets: Bullet[]) {
+    bullets.forEach((bullet) => renderBullet(bullet));
+}
+
+function renderEnemies(enemies: Enemy[]) {
+    enemies.forEach((enemy) => renderEnemy(enemy));
 }
 
 function renderGame(state: State) {
     clearBackground();
     renderPlayer(state.player);
+    renderBullets(state.bullets);
+    renderEnemies(state.enemies);
 }
-
 
 function createPlayer(x: number, y: number, speed: number): Player {
     return {
@@ -141,7 +151,7 @@ function createBullet(x: number, y: number, speed: number): Bullet {
             h: 10,
             w: 25,
         },
-        isActive: false,
+        isActive: true,
         speed,
     }
 }
@@ -156,11 +166,142 @@ function createEvents(): Events {
     }
 }
 
+let inputEvents = createEvents();
+
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'ArrowUp')    inputEvents.moveUp    = true;
+    if (e.key === 'ArrowDown')  inputEvents.moveDown  = true;
+    if (e.key === 'ArrowLeft')  inputEvents.moveLeft  = true;
+    if (e.key === 'ArrowRight') inputEvents.moveRight = true;
+    if (e.key === ' ')          inputEvents.shoot     = true;
+});
+
+document.addEventListener('keyup', (e: KeyboardEvent) => {
+    if (e.key === 'ArrowUp')    inputEvents.moveUp    = false;
+    if (e.key === 'ArrowDown')  inputEvents.moveDown  = false;
+    if (e.key === 'ArrowLeft')  inputEvents.moveLeft  = false;
+    if (e.key === 'ArrowRight') inputEvents.moveRight = false;
+    if (e.key === ' ')          inputEvents.shoot     = false;
+});
+
+function movePlayer(player: Player,  events: Events): Vector2 {
+    let x = player.rect.pos.x;
+    let y = player.rect.pos.y;
+
+    if (events.moveUp)
+        y = y - player.speed < player.rect.h / 2 ? player.rect.h / 2 : y - player.speed;
+    if (events.moveDown)
+        y = y + player.speed > GAME_HEIGHT - player.rect.h / 2 ? GAME_HEIGHT - player.rect.h / 2 : y + player.speed;
+    
+    if (events.moveLeft)
+        x = x - player.speed < 0 + player.rect.w / 2 ? 0 + player.rect.w / 2 : x - player.speed;
+    if (events.moveRight)
+        x = x + player.speed > GAME_WIDTH - player.rect.w / 2 ? GAME_WIDTH - player.rect.w / 2 : x + player.speed;
+
+    return {
+        x,
+        y
+    }
+}
+
+
+function updatePlayer(player: Player, events: Events) {
+    return {
+        ...player,
+        rect: {
+            ...player.rect,
+            pos: movePlayer(player, events)
+        }
+    }
+}
+
+function moveBullet(bullet: Bullet): Vector2 {
+    return {
+        ...bullet.rect.pos,
+        x: bullet.rect.pos.x + bullet.speed
+    }
+}
+
+const SHOOT_COOLDOWN = 6;
+const BULLET_SPEED = 12;
+
+function updateBullets(bullets: Bullet[], playerPos: Vector2, events: Events, cooldown: number): [Bullet[], number] {
+    const nBullets = bullets.map((bullet) => ({
+        ...bullet,
+        rect: { ...bullet.rect, pos: moveBullet(bullet) }
+    }));
+
+    if (events.shoot && cooldown === 0) {
+        return [[...nBullets, createBullet(playerPos.x, playerPos.y, BULLET_SPEED)], SHOOT_COOLDOWN];
+    }
+    return [nBullets, Math.max(0, cooldown - 1)];
+}
+
+function moveEnemy(enemy: Enemy): Vector2 {
+    return {
+        ...enemy.rect.pos,
+        x: enemy.rect.pos.x - enemy.speed
+    }
+}
+
+function updateEnemies(enemies: Enemy[]): Enemy[] {
+    let nEnemies = enemies.map((enemy) => {
+        let nEnemy = {
+            ...enemy,
+            rect: {
+                ...enemy.rect,
+                pos: moveEnemy(enemy)
+            }
+        }
+        return nEnemy;
+    })
+
+    return nEnemies;
+}
+
+function checkBulletEnemyCollisions(bullets: Bullet[], enemies: Enemy[]): [Bullet[], Enemy[]] {
+    return enemies.reduce<[Bullet[], Enemy[]]>(
+        ([accBullets, accEnemies], enemy) => {
+            const hitBullet = accBullets.find(b => rectsColliding(b.rect, enemy.rect));
+            if (hitBullet) {
+                return [
+                    accBullets.filter(b => b !== hitBullet),
+                    [...accEnemies, { ...enemy, health: enemy.health - 10 }]
+                ];
+            }
+            return [accBullets, [...accEnemies, enemy]];
+        },
+        [bullets, []]
+    );
+}
+
+function checkPlayerEnemyCollisions(player: Player, enemies: Enemy[]): Player {
+    const hit = enemies.some(e => rectsColliding(player.rect, e.rect));
+    return hit ? { ...player, health: player.health - 10 } : player;
+}
+
+function updateGame(state: State, events: Events): State {
+    const movedPlayer = updatePlayer(state.player, events);
+    const [movedBullets, newCooldown] = updateBullets(state.bullets, movedPlayer.rect.pos, events, state.shootCooldown);
+    const movedEnemies = updateEnemies(state.enemies);
+    const [survivingBullets, damagedEnemies] = checkBulletEnemyCollisions(movedBullets, movedEnemies);
+    const damagedPlayer = checkPlayerEnemyCollisions(movedPlayer, movedEnemies);
+    return {
+        ...state,
+        player: damagedPlayer,
+        bullets: survivingBullets,
+        enemies: damagedEnemies,
+        shootCooldown: newCooldown,
+    };
+}
+
+
 function loop(state: State): void {
-    setTimeout(() => {
-        clearBackground();
-        loop(state);
-    }, 500);
+    let events = { ...inputEvents }
+    state = updateGame(state, events);
+    renderGame(state);
+
+    requestAnimationFrame(() => loop(state))
 }
 
 function init(): void {
@@ -182,7 +323,8 @@ function init(): void {
         player: createPlayer(100, 300, 25),
         enemies: [],
         bullets: [],
-        events: createEvents()
+        events: createEvents(),
+        shootCooldown: 0,
     };
     loop(state);
 }
