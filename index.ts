@@ -115,6 +115,37 @@ function createPlayer(x: number, y: number, speed: number): Player {
     }
 }
 
+function createEnemy(x: number, y: number, speed: number): Enemy {
+    return {
+        rect: {
+            pos: {
+                x, 
+                y 
+            },
+            h: 100,
+            w: 50,
+        },
+        isDead: false,
+        health: 100,
+        speed,
+    }
+}
+
+function createBullet(x: number, y: number, speed: number): Bullet {
+    return {
+        rect: {
+            pos: {
+                x, 
+                y 
+            },
+            h: 10,
+            w: 25,
+        },
+        isActive: false,
+        speed,
+    }
+}
+
 function createEvents(): Events {
     return {
         moveUp: false,
