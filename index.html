@@ -2,24 +2,49 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Page Title</title>
+    <title>Functional Space Invaders</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <link rel="stylesheet" href="">
     <style>
         body {
             margin: 0;
+            background: #000;
+            color: #fff;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
             overflow: hidden;
+        }
+        h1 {
+            margin: 0.5rem 0;
+            font-size: 1.4rem;
+            letter-spacing: 0.1em;
         }
         #game {
             display: block;
+            flex: 1;
             width: 100vw;
-            height: 100vh;
+            min-height: 0;
+        }
+        #controls {
+            padding: 0.4rem 0;
+            font-size: 0.85rem;
+            color: #aaa;
+            display: flex;
+            gap: 1.5rem;
         }
     </style>
 </head>
 <body>
+    <h1>Functional Space Invaders</h1>
     <canvas id="game"></canvas>
+    <div id="controls">
+        <span>Arrow Keys — Move</span>
+        <span>Space — Shoot</span>
+        <span>R — Restart</span>
+    </div>
     <script src="./index.js" defer></script>
 </body>
 </html>
-
