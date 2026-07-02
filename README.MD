@@ -4,6 +4,10 @@ A browser-based Space Invaders clone written in TypeScript using functional prog
 
 **Controls:** Arrow keys to move, Space to shoot, R to restart.
 
+## Requirements
+
+Node.js >= 22
+
 ## Running
 
 ```
