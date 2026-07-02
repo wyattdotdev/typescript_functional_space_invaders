@@ -10,6 +10,10 @@ Node.js >= 22
 
 ## Running
 
+A precompiled `index.js` is included, so you can open `index.html` directly in a browser to play without building first.
+
+To rebuild from source:
+
 ```
 npx tsc && open index.html
 ```
