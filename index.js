@@ -272,15 +272,14 @@ function loop(state, timestamp = 0) {
     const elapsed = timestamp - lastTime;
     if (elapsed >= FRAME_INTERVAL) {
         lastTime = timestamp - (elapsed % FRAME_INTERVAL);
+        if (inputEvents.restart) {
+            requestAnimationFrame((t) => loop(createInitialState(), t));
+            return;
+        }
         if (state.gameOver) {
             renderGame(state);
             renderGameOverScreen(state);
-            if (inputEvents.restart) {
-                requestAnimationFrame((t) => loop(createInitialState(), t));
-            }
-            else {
-                requestAnimationFrame((t) => loop(state, t));
-            }
+            requestAnimationFrame((t) => loop(state, t));
             return;
         }
         const newState = updateGame(state, { ...inputEvents });
